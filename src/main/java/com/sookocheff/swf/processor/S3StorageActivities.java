@@ -10,6 +10,9 @@ import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.simpleworkflow.flow.ActivityExecutionContext;
 import com.amazonaws.services.simpleworkflow.flow.ActivityExecutionContextProvider;
 import com.amazonaws.services.simpleworkflow.flow.ActivityExecutionContextProviderImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * This is an S3 Store implementation which provides Activities to
@@ -17,34 +20,37 @@ import com.amazonaws.services.simpleworkflow.flow.ActivityExecutionContextProvid
  */
 public class S3StorageActivities implements StorageActivities {
 
+  private static final Logger LOG = LoggerFactory.getLogger(WorkflowHost.class);
+
   private static final int HEARTBEAT_INTERVAL = 60000;
 
   private final ActivityExecutionContextProvider contextProvider = new ActivityExecutionContextProviderImpl();
 
   private final AmazonS3 s3Client;
 
-  private final String localDirectory;
-
   private final String hostSpecificTaskList;
+  private final String localFolder;
 
-  public S3StorageActivities(AmazonS3 s3Client, String localDirectory, String taskList) {
+  public S3StorageActivities(AmazonS3 s3Client, String taskList, String localFolder) {
     this.s3Client = s3Client;
-    this.localDirectory = localDirectory;
     this.hostSpecificTaskList = taskList;
+    this.localFolder = localFolder;
   }
 
   @Override
   public void upload(String bucketName, String localName, String remoteName) {
-    System.out.println("upload begin remoteName=" + remoteName + ", localName=" + localName);
-    File f = new File(localName);
+    String fileNameFullPath = localFolder + localName;
+    LOG.info("upload begin remoteName=" + remoteName + ", localName=" + fileNameFullPath);
+    File f = new File(fileNameFullPath);
     s3Client.putObject(bucketName, remoteName, f);
-    System.out.println("upload done");
+    LOG.info("upload done");
   }
 
   @Override
   public String download(String bucketName, String remoteName, String localName) throws Exception {
-    System.out.println("download begin remoteName=" + remoteName + ", localName=" + localName);
-    FileOutputStream f = new FileOutputStream(localName);
+    String fileNameFullPath = localFolder + localName;
+    LOG.info("download begin remoteName=" + remoteName + ", localName=" + fileNameFullPath);
+    FileOutputStream f = new FileOutputStream(fileNameFullPath);
     try {
       S3Object obj = s3Client.getObject(bucketName, remoteName);
       InputStream inputStream = obj.getObjectContent();
@@ -69,16 +75,17 @@ public class S3StorageActivities implements StorageActivities {
     }
 
     // Return hostname file was downloaded to
-    System.out.println("download done");
+    LOG.info("download done");
     return hostSpecificTaskList;
   }
 
   @Override
   public void deleteLocalFile(String fileName) {
-    System.out.println("deleteLocalFile begin fileName=" + fileName);
+    String fileNameFullPath = localFolder + fileName;
+    LOG.info("deleteLocalFile begin fileName=" + fileNameFullPath);
     File f = new File(fileName);
     f.delete();
-    System.out.println("deleteLocal done");
+    LOG.info("deleteLocal done");
   }
 
   /**

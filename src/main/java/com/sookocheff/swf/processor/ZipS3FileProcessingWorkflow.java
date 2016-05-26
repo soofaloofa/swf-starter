@@ -26,7 +26,6 @@ public class ZipS3FileProcessingWorkflow implements FileProcessingWorkflow {
    */
   private final FileActivitiesClient fileClient;
 
-
   private final WorkflowContext workflowContext;
 
   private String state = "Started";
@@ -40,28 +39,27 @@ public class ZipS3FileProcessingWorkflow implements FileProcessingWorkflow {
   }
 
   @Override
-  public void processFile(final String sourceBucketName, final String sourceFilename, final String targetBucketName,
-                          final String targetFilename) throws IOException {
+  public void processFile(String inputBucketName, String inputFileName, String outputBucketName, String outputFilename)
+      throws IOException {
     // Settable to store the worker specific task list returned by the activity
-    final Settable<String> taskList = new Settable<String>();
+    Settable<String> taskList = new Settable<String>();
 
-    // Use runId as a way to ensure that downloaded files do not get name collisions
+    // Use prepend runId to input and output name way to avoid name collisions
     String workflowRunId = workflowContext.getWorkflowExecution().getRunId();
-    File localSource = new File(sourceFilename);
-    final String localSourceFilename = workflowRunId + "_" + localSource.getName();
-    File localTarget = new File(targetFilename);
-    final String localTargetFilename = workflowRunId + "_" + localTarget.getName();
+    String localInputFileName = workflowRunId + "_" + inputFileName;
+    String localOutputFileName = workflowRunId + "_" + outputFilename;
+
     new TryCatchFinally() {
 
       @Override
       protected void doTry() throws Throwable {
-        Promise<String> activityWorkerTaskList = storageClient.download(sourceBucketName, sourceFilename, localSourceFilename);
+        Promise<String> activityWorkerTaskList = storageClient.download(inputBucketName, inputFileName, localInputFileName);
         // chaining is a way for one promise to get assigned the value of another
         taskList.chain(activityWorkerTaskList);
         // Call processFile activity to zip the file
-        Promise<Void> fileProcessed = processFileOnHost(localSourceFilename, localTargetFilename, activityWorkerTaskList);
+        Promise<Void> fileProcessed = processFileOnHost(localInputFileName, localOutputFileName, activityWorkerTaskList);
         // Call upload activity to upload zipped file
-        upload(targetBucketName, targetFilename, localTargetFilename, taskList, fileProcessed);
+        upload(outputBucketName, outputFilename, localOutputFileName, taskList, fileProcessed);
       }
 
       @Override
@@ -78,8 +76,8 @@ public class ZipS3FileProcessingWorkflow implements FileProcessingWorkflow {
           ActivitySchedulingOptions options = new ActivitySchedulingOptions().withTaskList(taskList.get());
 
           // Call deleteLocalFile activity using the host specific task list
-          storageClient.deleteLocalFile(localSourceFilename, options);
-          storageClient.deleteLocalFile(localTargetFilename, options);
+          storageClient.deleteLocalFile(localInputFileName, options);
+          storageClient.deleteLocalFile(localOutputFileName, options);
         }
         if (!state.startsWith("Failed:")) {
           state = "Completed";
@@ -98,11 +96,11 @@ public class ZipS3FileProcessingWorkflow implements FileProcessingWorkflow {
   }
 
   @Asynchronous
-  private void upload(final String targetBucketName, final String targetFilename, final String localTargetFilename,
+  private void upload(final String outputBucketName, final String outputFilename, final String localTargetFilename,
                       Promise<String> taskList, Promise<Void> fileProcessed) {
     state = "Processed at " + taskList.get();
     ActivitySchedulingOptions options = new ActivitySchedulingOptions().withTaskList(taskList.get());
-    storageClient.upload(targetBucketName, localTargetFilename, targetFilename, options);
+    storageClient.upload(outputBucketName, localTargetFilename, outputFilename, options);
   }
 
   @Override

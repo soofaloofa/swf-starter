@@ -6,14 +6,18 @@ import java.util.concurrent.TimeUnit;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.simpleworkflow.AmazonSimpleWorkflow;
 import com.amazonaws.services.simpleworkflow.flow.ActivityWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ActivityHost {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ActivityHost.class);
 
   public static void main(String[] args) throws Exception {
     // Load config
     Config config = Config.createConfig();
 
-    // Create clietns
+    // Create clients
     AmazonSimpleWorkflow swfClient = config.createSWFClient();
     AmazonS3 s3Client = config.createS3Client();
 
@@ -24,10 +28,10 @@ public class ActivityHost {
 
     // Start worker to poll the activity worker task list
     final ActivityWorker workerForCommonTaskList = new ActivityWorker(swfClient, domain, taskList);
-    S3StorageActivities s3Activities = new S3StorageActivities(s3Client, localFolder, hostName);
+    S3StorageActivities s3Activities = new S3StorageActivities(s3Client, hostName, localFolder);
     workerForCommonTaskList.addActivitiesImplementation(s3Activities);
     workerForCommonTaskList.start();
-    System.out.println("Host Service Started for Task List: " + taskList);
+    LOG.info("Host Service Started for Task List: " + taskList);
 
     // Start worker to poll the host specific task list, executes tasks triggered for this particular host
     final ActivityWorker workerForHostSpecificTaskList = new ActivityWorker(swfClient, domain, hostName);
@@ -38,7 +42,7 @@ public class ActivityHost {
     ZipFileActivities zipFileActivities = new ZipFileActivities(localFolder);
     workerForHostSpecificTaskList.addActivitiesImplementation(zipFileActivities);
     workerForHostSpecificTaskList.start();
-    System.out.println("Worker Started for Activity Task List: " + hostName);
+    LOG.info("Worker Started for Activity Task List: " + hostName);
 
     // Close any running worker threads on VM shutdown
     Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -49,7 +53,7 @@ public class ActivityHost {
           workerForHostSpecificTaskList.shutdown();
           workerForCommonTaskList.awaitTermination(1, TimeUnit.MINUTES);
           workerForHostSpecificTaskList.awaitTermination(1, TimeUnit.MINUTES);
-          System.out.println("Activity Workers Exited.");
+          LOG.info("Activity Workers Exited.");
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

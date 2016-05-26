@@ -15,7 +15,7 @@ import com.amazonaws.services.simpleworkflow.flow.annotations.WorkflowRegistrati
 public interface FileProcessingWorkflow {
 
     @Execute(name = "ProcessFile", version = "1.0")
-    void processFile(String sourceBucketName, String sourceFilename, String targetBucketName, String targetFilename) throws IOException;
+    void processFile(String inputBucketName, String inputFilename, String outputBucketName, String outputFilename) throws IOException;
 
     @GetState
     String getState();

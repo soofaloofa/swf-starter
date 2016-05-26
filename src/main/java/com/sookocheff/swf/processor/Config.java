@@ -11,9 +11,6 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
@@ -85,9 +82,6 @@ public class Config {
    * @throws IllegalArgumentException
    */
   static Config createConfig(String propertiesFile) throws IOException, IllegalArgumentException {
-    BasicConfigurator.configure();
-    Logger.getRootLogger().setLevel(Level.DEBUG);
-
     return new Config(propertiesFile);
   }
 
@@ -98,10 +92,7 @@ public class Config {
    * @throws IllegalArgumentException
    */
   static Config createConfig() throws IOException, IllegalArgumentException {
-    BasicConfigurator.configure();
-    Logger.getRootLogger().setLevel(Level.DEBUG);
-
-    return new Config();
+    return createConfig(DEFAULT_PROPERTIES_FILE);
   }
 
   private Properties loadProperties(String propertiesFile) {
@@ -160,11 +151,6 @@ public class Config {
   public String getSwfDomain() {
     return swfDomain;
   }
-
-  public String getSwfServiceUrl() {
-    return swfServiceUrl;
-  }
-
 
   static String getHostName() {
     try {

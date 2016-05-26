@@ -2,11 +2,15 @@ package com.sookocheff.swf.processor;
 
 import com.amazonaws.services.simpleworkflow.AmazonSimpleWorkflow;
 import com.amazonaws.services.simpleworkflow.model.WorkflowExecution;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Starts a new workflow execution.
  */
 public class WorkflowExecutionStarter {
+
+  private static final Logger LOG = LoggerFactory.getLogger(WorkflowExecutionStarter.class);
 
   public static void main(String[] args) throws Exception {
     // Load configuration
@@ -25,7 +29,7 @@ public class WorkflowExecutionStarter {
 
     // Start workflow execution
     WorkflowExecution workflowExecution = workflow.getWorkflowExecution();
-    System.out.println("Started periodic workflow with workflowId=\"" + workflowExecution.getWorkflowId()
+    LOG.info("Started periodic workflow with workflowId=\"" + workflowExecution.getWorkflowId()
         + "\" and runId=\"" + workflowExecution.getRunId() + "\"");
 
     System.exit(0);

@@ -12,11 +12,11 @@ import com.amazonaws.services.simpleworkflow.flow.WorkflowWorker;
 public class WorkflowHost {
 
   public static void main(String[] args) throws Exception {
-    ConfigHelper configHelper = ConfigHelper.createConfig();
-    AmazonSimpleWorkflow swfService = configHelper.createSWFClient();
-    String domain = configHelper.getDomain();
+    Config config = Config.createConfig();
+    AmazonSimpleWorkflow swfService = config.createSWFClient();
+    String domain = config.getDomain();
 
-    final WorkflowWorker worker = new WorkflowWorker(swfService, domain, configHelper.getDecisionTaskList());
+    final WorkflowWorker worker = new WorkflowWorker(swfService, domain, config.getDecisionTaskList());
     worker.addWorkflowImplementationType(ZipFileActivities.class);
     worker.start();
     System.out.println("Workflow Host Service Started...");

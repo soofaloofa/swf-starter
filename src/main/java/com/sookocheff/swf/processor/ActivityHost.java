@@ -9,60 +9,62 @@ import com.amazonaws.services.simpleworkflow.flow.ActivityWorker;
 
 public class ActivityHost {
 
-    public static void main(String[] args) throws Exception {
-        ConfigHelper configHelper = ConfigHelper.createConfig();
-        AmazonSimpleWorkflow swfService = configHelper.createSWFClient();
-        AmazonS3 s3Client = configHelper.createS3Client();
-        String domain = configHelper.getDomain();
-        String localFolder = configHelper.getLocalFolder();
-        String hostName = configHelper.getHostName();
-        String taskList = configHelper.getActivitiesTaskList();
+  public static void main(String[] args) throws Exception {
+    // Load config
+    Config config = Config.createConfig();
 
-        // Start worker to poll the common task list
-        final ActivityWorker workerForCommonTaskList = new ActivityWorker(swfService, domain, taskList);
-        S3StorageActivities s3Activities = new S3StorageActivities(s3Client, localFolder, hostName);
-        workerForCommonTaskList.addActivitiesImplementation(s3Activities);
-        workerForCommonTaskList.start();
-        System.out.println("Host Service Started for Task List: " + taskList);
+    // Create clietns
+    AmazonSimpleWorkflow swfClient = config.createSWFClient();
+    AmazonS3 s3Client = config.createS3Client();
 
-        // Start worker to poll the host specific task list, executes tasks triggered for this particular host
-        final ActivityWorker workerForHostSpecificTaskList = new ActivityWorker(swfService, domain, hostName);
-        // add s3 implementation
-        workerForHostSpecificTaskList.addActivitiesImplementation(s3Activities);
+    String hostName = Config.getHostName();
+    String domain = config.getSwfDomain();
+    String localFolder = config.getActivityWorkerLocalFolder();
+    String taskList = config.getActivityWorkerTaskList();
 
-        // add file zip implementation
-        ZipFileActivities zipFileActivities = new ZipFileActivities(localFolder);
-        workerForHostSpecificTaskList.addActivitiesImplementation(zipFileActivities);
-        workerForHostSpecificTaskList.start();
-        System.out.println("Worker Started for Activity Task List: " + hostName);
+    // Start worker to poll the activity worker task list
+    final ActivityWorker workerForCommonTaskList = new ActivityWorker(swfClient, domain, taskList);
+    S3StorageActivities s3Activities = new S3StorageActivities(s3Client, localFolder, hostName);
+    workerForCommonTaskList.addActivitiesImplementation(s3Activities);
+    workerForCommonTaskList.start();
+    System.out.println("Host Service Started for Task List: " + taskList);
 
-        // Wait to close any running workers
-        Runtime.getRuntime().addShutdownHook(new Thread() {
+    // Start worker to poll the host specific task list, executes tasks triggered for this particular host
+    final ActivityWorker workerForHostSpecificTaskList = new ActivityWorker(swfClient, domain, hostName);
+    // add s3 implementation
+    workerForHostSpecificTaskList.addActivitiesImplementation(s3Activities);
 
-            public void run() {
-                try {
-                    workerForCommonTaskList.shutdown();
-                    workerForHostSpecificTaskList.shutdown();
-                    workerForCommonTaskList.awaitTermination(1, TimeUnit.MINUTES);
-                    workerForHostSpecificTaskList.awaitTermination(1, TimeUnit.MINUTES);
-                    System.out.println("Activity Workers Exited.");
-                }
-                catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
+    // add file zip implementation
+    ZipFileActivities zipFileActivities = new ZipFileActivities(localFolder);
+    workerForHostSpecificTaskList.addActivitiesImplementation(zipFileActivities);
+    workerForHostSpecificTaskList.start();
+    System.out.println("Worker Started for Activity Task List: " + hostName);
 
-        System.out.println("Press any key to terminate service.");
+    // Close any running worker threads on VM shutdown
+    Runtime.getRuntime().addShutdownHook(new Thread() {
 
+      public void run() {
         try {
-            System.in.read();
+          workerForCommonTaskList.shutdown();
+          workerForHostSpecificTaskList.shutdown();
+          workerForCommonTaskList.awaitTermination(1, TimeUnit.MINUTES);
+          workerForHostSpecificTaskList.awaitTermination(1, TimeUnit.MINUTES);
+          System.out.println("Activity Workers Exited.");
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.exit(0);
+      }
+    });
 
+    System.out.println("Press any key to terminate activity workers.");
+
+    try {
+      System.in.read();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
+    System.exit(0);
+
+  }
 
 }

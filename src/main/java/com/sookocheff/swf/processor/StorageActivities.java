@@ -5,30 +5,35 @@ import com.amazonaws.services.simpleworkflow.flow.annotations.ActivityRegistrati
 import com.amazonaws.services.simpleworkflow.flow.annotations.ExponentialRetry;
 
 /**
- * Contract for S3 activities.
+ * Flow framework contract for storage activities.
  */
 @Activities(version = "1.0")
 @ActivityRegistrationOptions(defaultTaskScheduleToStartTimeoutSeconds = 60, defaultTaskStartToCloseTimeoutSeconds = 120)
 public interface StorageActivities {
 
   /**
-   * @param bucketName Name of the file to use on S3 bucket after upload
-   * @param localName  Name of the file to upload from temporary directory
-   * @param remoteName Machine name which has the file that needs to be uploaded
-   * @return
+   * Upload a file to storage.
+   *
+   * @param bucketName Name of the S3 bucket to upload to
+   * @param localName  Local name of the file to upload to S3
+   * @param remoteName Name of the file to use when uploaded to S3
    */
   @ExponentialRetry(initialRetryIntervalSeconds = 10, maximumAttempts = 10)
   void upload(String bucketName, String localName, String remoteName);
 
   /**
-   * @param bucketName Name of the file to download from S3 bucket
-   * @param remoteName Name of the remote machine to download from
-   * @param localName  Name of the machine used locally after download
+   * Download a file from storage.
+   *
+   * @param bucketName Name of the S3 bucket to download from
+   * @param remoteName Name of the file to download from S3
+   * @param localName  Local name of the file to download to
    */
   @ExponentialRetry(initialRetryIntervalSeconds = 10, maximumAttempts = 10)
   String download(String bucketName, String remoteName, String localName) throws Exception;
 
   /**
+   * Delete temporary local files.
+   *
    * @param fileName Name of file to delete from temporary folder
    */
   @ExponentialRetry(initialRetryIntervalSeconds = 10)

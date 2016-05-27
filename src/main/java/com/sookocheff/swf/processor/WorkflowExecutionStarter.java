@@ -6,7 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Starts a new workflow execution.
+ * Starts a new workflow execution. Execution is managed by SWF and will send activities
+ * and decisions to the ActivityHost and WorkflowHost.
+ *
+ * In a deployed application a workflow may be started after receiving a
+ * message from SNS (for example).
  */
 public class WorkflowExecutionStarter {
 
@@ -16,18 +20,18 @@ public class WorkflowExecutionStarter {
     // Load configuration
     Config config = Config.createConfig();
 
-    // Start Workflow client
-    AmazonSimpleWorkflow swfClient = config.createSWFClient();
+    // FileProcessingWorkflowClientExternalFactory is auto-generated through flow framework
     FileProcessingWorkflowClientExternalFactory clientFactory =
-        new FileProcessingWorkflowClientExternalFactoryImpl(swfClient, config.getSwfDomain());
+        new FileProcessingWorkflowClientExternalFactoryImpl(config.createSWFClient(), config.getSwfDomain());
     FileProcessingWorkflowClientExternal workflow = clientFactory.getClient();
+
+    // Start workflow execution
     workflow.processFile(
         config.getWorkflowInputBucketName(),
         config.getWorkflowInputFileName(),
         config.getWorkflowOutputBucketName(),
         config.getWorkflowOutputFileName());
 
-    // Start workflow execution
     WorkflowExecution workflowExecution = workflow.getWorkflowExecution();
     LOG.info("Started periodic workflow with workflowId=\"" + workflowExecution.getWorkflowId()
         + "\" and runId=\"" + workflowExecution.getRunId() + "\"");

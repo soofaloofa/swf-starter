@@ -20,12 +20,17 @@ import com.amazonaws.services.simpleworkflow.AmazonSimpleWorkflowClient;
 
 
 /**
- * Helper for creating AWS clients.
+ * Helper class for storing application configuration and creating AWS clients.
+ *
+ * You can change the configuration of this application by editing the
+ * processor.properties file.
  */
 public class Config {
 
+  // Default location of the properties file to load configuration values from.
   public static final String DEFAULT_PROPERTIES_FILE = "processor.properties";
 
+  // Keys in the property file containing your configuration
   public static final String SWF_SERVICE_URL = "service.url";
   public static final String SWF_SERVICE_DOMAIN = "service.domain";
 
@@ -40,6 +45,7 @@ public class Config {
   public static final String WORKFLOW_OUTPUT_FILE_NAME = "workflow.output.fileName";
   public static final String WORKFLOW_OUTPUT_BUCKET_NAME = "workflow.output.bucketName";
 
+  // Timeout period for AWS clients
   private static final int SOCKET_TIMEOUT = 60 * 1000;
 
   private final String activityWorkerTaskList;
@@ -95,6 +101,75 @@ public class Config {
     return createConfig(DEFAULT_PROPERTIES_FILE);
   }
 
+  /**
+   * Create a new SWF client given the current configuration.
+   *
+   * @return an AmazonSimpleWorkflow client
+   */
+  AmazonSimpleWorkflow createSWFClient() {
+    AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+    AmazonSimpleWorkflow service =
+        new AmazonSimpleWorkflowClient(credentials, new ClientConfiguration().withSocketTimeout(SOCKET_TIMEOUT));
+    service.setEndpoint(swfServiceUrl);
+    return service;
+  }
+
+  /**
+   * Create a new S3 client given the current configuration.
+   *
+   * @return an AmazonS3 client
+   */
+  AmazonS3 createS3Client() {
+    AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+    return new AmazonS3Client(credentials, new ClientConfiguration().withSocketTimeout(SOCKET_TIMEOUT));
+  }
+
+  /**
+   * Get the host name of the current machine.
+   *
+   * @return this computer's machine
+   */
+  static String getHostName() {
+    try {
+      InetAddress addr = InetAddress.getLocalHost();
+      return addr.getHostName();
+    } catch (UnknownHostException e) {
+      throw new Error(e);
+    }
+  }
+
+  String getActivityWorkerTaskList() {
+    return activityWorkerTaskList;
+  }
+
+  String getActivityWorkerLocalFolder() {
+    return activityWorkerLocalFolder;
+  }
+
+  String getWorkflowWorkerTaskList() {
+    return workflowWorkerTaskList;
+  }
+
+  String getWorkflowInputFileName() {
+    return workflowInputFileName;
+  }
+
+  String getWorkflowInputBucketName() {
+    return workflowInputBucketName;
+  }
+
+  String getWorkflowOutputFileName() {
+    return workflowOutputFileName;
+  }
+
+  String getWorkflowOutputBucketName() {
+    return workflowOutputBucketName;
+  }
+
+  String getSwfDomain() {
+    return swfDomain;
+  }
+
   private Properties loadProperties(String propertiesFile) {
     URL url = Resources.getResource(propertiesFile);
     ByteSource byteSource = Resources.asByteSource(url);
@@ -105,59 +180,5 @@ public class Config {
       e.printStackTrace();
     }
     return properties;
-  }
-
-  AmazonSimpleWorkflow createSWFClient() {
-    AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
-    AmazonSimpleWorkflow service =
-        new AmazonSimpleWorkflowClient(credentials, new ClientConfiguration().withSocketTimeout(SOCKET_TIMEOUT));
-    service.setEndpoint(swfServiceUrl);
-    return service;
-  }
-
-  AmazonS3 createS3Client() {
-    AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
-    return new AmazonS3Client(credentials, new ClientConfiguration().withSocketTimeout(SOCKET_TIMEOUT));
-  }
-
-  public String getActivityWorkerTaskList() {
-    return activityWorkerTaskList;
-  }
-
-  public String getActivityWorkerLocalFolder() {
-    return activityWorkerLocalFolder;
-  }
-
-  public String getWorkflowWorkerTaskList() {
-    return workflowWorkerTaskList;
-  }
-
-  public String getWorkflowInputFileName() {
-    return workflowInputFileName;
-  }
-
-  public String getWorkflowInputBucketName() {
-    return workflowInputBucketName;
-  }
-
-  public String getWorkflowOutputFileName() {
-    return workflowOutputFileName;
-  }
-
-  public String getWorkflowOutputBucketName() {
-    return workflowOutputBucketName;
-  }
-
-  public String getSwfDomain() {
-    return swfDomain;
-  }
-
-  static String getHostName() {
-    try {
-      InetAddress addr = InetAddress.getLocalHost();
-      return addr.getHostName();
-    } catch (UnknownHostException e) {
-      throw new Error(e);
-    }
   }
 }

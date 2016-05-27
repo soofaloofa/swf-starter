@@ -9,23 +9,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is the process which runs all SWF workflow deciders
+ * The WorkflowHost processes work defined by @Workflow and @Execute annotations.
+ *
+ * WorkflowWorker instances process decisions given by the SWF service.
  */
 public class WorkflowHost {
 
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowHost.class);
 
   public static void main(String[] args) throws Exception {
+    // Load config
     Config config = Config.createConfig();
-    AmazonSimpleWorkflow swfService = config.createSWFClient();
-    String domain = config.getSwfDomain();
 
-    final WorkflowWorker worker = new WorkflowWorker(swfService, domain, config.getWorkflowWorkerTaskList());
+    // Create a workflow worker
+    WorkflowWorker worker =
+        new WorkflowWorker(config.createSWFClient(), config.getSwfDomain(), config.getWorkflowWorkerTaskList());
     worker.addWorkflowImplementationType(ZipS3FileProcessingWorkflow.class);
     worker.start();
     LOG.info("Workflow Host Service Started...");
 
-    // Wait to close any running workers
+    // Close any running worker threads on VM shutdown
     Runtime.getRuntime().addShutdownHook(new Thread() {
 
       public void run() {

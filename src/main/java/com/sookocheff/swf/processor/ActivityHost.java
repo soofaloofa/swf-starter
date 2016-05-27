@@ -9,6 +9,15 @@ import com.amazonaws.services.simpleworkflow.flow.ActivityWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The ActivityHost processes work defined by @Activities annotations.
+ *
+ * For this application, work is divided into multiple task lists that are managed by SWF.
+ * A common task list is for work that is processable by any worker.
+ * Each worker also has a private task list that is unique to that host. By adding
+ * work to this list, the worker will process it. This is used for workers to process
+ * files that have been downloaded locally.
+ */
 public class ActivityHost {
 
   private static final Logger LOG = LoggerFactory.getLogger(ActivityHost.class);
@@ -26,14 +35,15 @@ public class ActivityHost {
     String localFolder = config.getActivityWorkerLocalFolder();
     String taskList = config.getActivityWorkerTaskList();
 
-    // Start worker to poll the activity worker task list
+    // Start worker to poll the common worker task list
     final ActivityWorker workerForCommonTaskList = new ActivityWorker(swfClient, domain, taskList);
     S3StorageActivities s3Activities = new S3StorageActivities(s3Client, hostName, localFolder);
     workerForCommonTaskList.addActivitiesImplementation(s3Activities);
     workerForCommonTaskList.start();
     LOG.info("Host Service Started for Task List: " + taskList);
 
-    // Start worker to poll the host specific task list, executes tasks triggered for this particular host
+    // Start worker to poll the host specific task list
+    // Executes tasks specified for this particular host
     final ActivityWorker workerForHostSpecificTaskList = new ActivityWorker(swfClient, domain, hostName);
     // add s3 implementation
     workerForHostSpecificTaskList.addActivitiesImplementation(s3Activities);
